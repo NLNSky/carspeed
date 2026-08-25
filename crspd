@@ -63,31 +63,36 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- Config
 local DEFAULT_SPEED = 100
 local DEFAULT_FLY_SPEED = 60
+local DEFAULT_PL_SPEED = 16
+local DEFAULT_PL_FLY_SPEED = 60
 local MIN_SPEED = 0
 local MAX_SPEED = 300
-local PANEL_SIZE = UDim2.new(0, 280, 0, 195)
-
+local PANEL_SIZE = UDim2.new(0, 280, 0, 340)
 local COLLAPSED_SIZE = UDim2.new(0, 280, 0, 32)
 
 -- State
 local currentSpeed = DEFAULT_SPEED
 local currentFlySpeed = DEFAULT_FLY_SPEED
+local currentPlSpeed = DEFAULT_PL_SPEED
+local currentPlFlySpeed = DEFAULT_PL_FLY_SPEED
 local boundKey = Enum.KeyCode.LeftShift
 local flyBoundKey = Enum.KeyCode.F
+local plFlyBoundKey = Enum.KeyCode.G
 local isHoldingKey = false
 local isHoldingFlyKey = false
+local isHoldingPlFlyKey = false
 local isCollapsed = false
 local isDragging = false
 local dragStart = nil
 local startPos = nil
 local isBindingKey = false
 local isBindingFlyKey = false
+local isBindingPlFlyKey = false
+local spPlEnabled = false
 local flyForward = false
 local flyBack = false
 local flyLeft = false
 local flyRight = false
-local flyUp = false
-local flyDown = false
 
 -- Create GUI
 local screenGui = Instance.new("ScreenGui")
@@ -99,7 +104,7 @@ screenGui.Parent = playerGui
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = PANEL_SIZE
-mainFrame.Position = UDim2.new(0.5, -140, 0.25, 0)
+mainFrame.Position = UDim2.new(0.5, -140, 0.15, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -145,7 +150,6 @@ titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = topBar
 
--- Collapse button
 local collapseBtn = Instance.new("TextButton")
 collapseBtn.Name = "CollapseBtn"
 collapseBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -157,11 +161,9 @@ collapseBtn.TextSize = 18
 collapseBtn.Font = Enum.Font.GothamBold
 collapseBtn.Parent = topBar
 
-local collapseCorner = Instance.new("UICorner")
-collapseCorner.CornerRadius = UDim.new(0, 4)
-collapseCorner.Parent = collapseBtn
+Instance.new("UICorner", collapseBtn).CornerRadius = UDim.new(0, 4)
 
--- Content container
+-- Content
 local content = Instance.new("Frame")
 content.Name = "Content"
 content.Size = UDim2.new(1, -20, 1, -42)
@@ -172,12 +174,11 @@ content.Parent = mainFrame
 -- ========== SPEED CAR ==========
 local speedRow = Instance.new("Frame")
 speedRow.Name = "SpeedRow"
-speedRow.Size = UDim2.new(1, 0, 0, 28)
+speedRow.Size = UDim2.new(1, 0, 0, 26)
 speedRow.BackgroundTransparency = 1
 speedRow.Parent = content
 
 local speedLabel = Instance.new("TextLabel")
-speedLabel.Name = "SpeedLabel"
 speedLabel.Size = UDim2.new(0, 90, 1, 0)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Text = "Speed Car"
@@ -189,8 +190,8 @@ speedLabel.Parent = speedRow
 
 local keybindBtn = Instance.new("TextButton")
 keybindBtn.Name = "KeybindBtn"
-keybindBtn.Size = UDim2.new(0, 100, 0, 26)
-keybindBtn.Position = UDim2.new(0, 100, 0.5, -13)
+keybindBtn.Size = UDim2.new(0, 100, 0, 24)
+keybindBtn.Position = UDim2.new(0, 100, 0.5, -12)
 keybindBtn.BackgroundColor3 = Color3.fromRGB(45, 30, 70)
 keybindBtn.Text = "LeftShift"
 keybindBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
@@ -198,19 +199,15 @@ keybindBtn.TextSize = 12
 keybindBtn.Font = Enum.Font.Gotham
 keybindBtn.Parent = speedRow
 
-local keybindCorner = Instance.new("UICorner")
-keybindCorner.CornerRadius = UDim.new(0, 5)
-keybindCorner.Parent = keybindBtn
-
+Instance.new("UICorner", keybindBtn).CornerRadius = UDim.new(0, 5)
 local keybindStroke = Instance.new("UIStroke")
 keybindStroke.Color = Color3.fromRGB(140, 60, 255)
 keybindStroke.Thickness = 1
 keybindStroke.Parent = keybindBtn
 
 local sliderLabel = Instance.new("TextLabel")
-sliderLabel.Name = "SliderLabel"
-sliderLabel.Size = UDim2.new(1, 0, 0, 18)
-sliderLabel.Position = UDim2.new(0, 0, 0, 32)
+sliderLabel.Size = UDim2.new(1, 0, 0, 16)
+sliderLabel.Position = UDim2.new(0, 0, 0, 28)
 sliderLabel.BackgroundTransparency = 1
 sliderLabel.Text = "Speed: " .. tostring(DEFAULT_SPEED)
 sliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -220,45 +217,37 @@ sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
 sliderLabel.Parent = content
 
 local sliderBg = Instance.new("Frame")
-sliderBg.Name = "SliderBg"
 sliderBg.Size = UDim2.new(1, 0, 0, 8)
-sliderBg.Position = UDim2.new(0, 0, 0, 54)
+sliderBg.Position = UDim2.new(0, 0, 0, 48)
 sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 sliderBg.BorderSizePixel = 0
 sliderBg.Parent = content
-
 Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
 
 local sliderFill = Instance.new("Frame")
-sliderFill.Name = "SliderFill"
 sliderFill.Size = UDim2.new((DEFAULT_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1, 0)
 sliderFill.BackgroundColor3 = Color3.fromRGB(140, 60, 255)
 sliderFill.BorderSizePixel = 0
 sliderFill.Parent = sliderBg
-
 Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
 
 local sliderKnob = Instance.new("Frame")
-sliderKnob.Name = "SliderKnob"
 sliderKnob.Size = UDim2.new(0, 14, 0, 14)
 sliderKnob.Position = UDim2.new((DEFAULT_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), -7, 0.5, -7)
 sliderKnob.BackgroundColor3 = Color3.fromRGB(200, 160, 255)
 sliderKnob.BorderSizePixel = 0
 sliderKnob.ZIndex = 2
 sliderKnob.Parent = sliderBg
-
 Instance.new("UICorner", sliderKnob).CornerRadius = UDim.new(1, 0)
 
 -- ========== FLY CAR ==========
 local flyRow = Instance.new("Frame")
-flyRow.Name = "FlyRow"
-flyRow.Size = UDim2.new(1, 0, 0, 28)
-flyRow.Position = UDim2.new(0, 0, 0, 78)
+flyRow.Size = UDim2.new(1, 0, 0, 26)
+flyRow.Position = UDim2.new(0, 0, 0, 68)
 flyRow.BackgroundTransparency = 1
 flyRow.Parent = content
 
 local flyLabel = Instance.new("TextLabel")
-flyLabel.Name = "FlyLabel"
 flyLabel.Size = UDim2.new(0, 90, 1, 0)
 flyLabel.BackgroundTransparency = 1
 flyLabel.Text = "Fly Car"
@@ -269,27 +258,23 @@ flyLabel.TextXAlignment = Enum.TextXAlignment.Left
 flyLabel.Parent = flyRow
 
 local flyKeybindBtn = Instance.new("TextButton")
-flyKeybindBtn.Name = "FlyKeybindBtn"
-flyKeybindBtn.Size = UDim2.new(0, 100, 0, 26)
-flyKeybindBtn.Position = UDim2.new(0, 100, 0.5, -13)
+flyKeybindBtn.Size = UDim2.new(0, 100, 0, 24)
+flyKeybindBtn.Position = UDim2.new(0, 100, 0.5, -12)
 flyKeybindBtn.BackgroundColor3 = Color3.fromRGB(45, 30, 70)
 flyKeybindBtn.Text = "F"
 flyKeybindBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
 flyKeybindBtn.TextSize = 12
 flyKeybindBtn.Font = Enum.Font.Gotham
 flyKeybindBtn.Parent = flyRow
-
 Instance.new("UICorner", flyKeybindBtn).CornerRadius = UDim.new(0, 5)
-
 local flyKeybindStroke = Instance.new("UIStroke")
 flyKeybindStroke.Color = Color3.fromRGB(140, 60, 255)
 flyKeybindStroke.Thickness = 1
 flyKeybindStroke.Parent = flyKeybindBtn
 
 local flySliderLabel = Instance.new("TextLabel")
-flySliderLabel.Name = "FlySliderLabel"
-flySliderLabel.Size = UDim2.new(1, 0, 0, 18)
-flySliderLabel.Position = UDim2.new(0, 0, 0, 110)
+flySliderLabel.Size = UDim2.new(1, 0, 0, 16)
+flySliderLabel.Position = UDim2.new(0, 0, 0, 96)
 flySliderLabel.BackgroundTransparency = 1
 flySliderLabel.Text = "Fly Speed: " .. tostring(DEFAULT_FLY_SPEED)
 flySliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -299,34 +284,164 @@ flySliderLabel.TextXAlignment = Enum.TextXAlignment.Left
 flySliderLabel.Parent = content
 
 local flySliderBg = Instance.new("Frame")
-flySliderBg.Name = "FlySliderBg"
 flySliderBg.Size = UDim2.new(1, 0, 0, 8)
-flySliderBg.Position = UDim2.new(0, 0, 0, 132)
+flySliderBg.Position = UDim2.new(0, 0, 0, 116)
 flySliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 flySliderBg.BorderSizePixel = 0
 flySliderBg.Parent = content
-
 Instance.new("UICorner", flySliderBg).CornerRadius = UDim.new(1, 0)
 
 local flySliderFill = Instance.new("Frame")
-flySliderFill.Name = "FlySliderFill"
 flySliderFill.Size = UDim2.new((DEFAULT_FLY_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1, 0)
 flySliderFill.BackgroundColor3 = Color3.fromRGB(140, 60, 255)
 flySliderFill.BorderSizePixel = 0
 flySliderFill.Parent = flySliderBg
-
 Instance.new("UICorner", flySliderFill).CornerRadius = UDim.new(1, 0)
 
 local flySliderKnob = Instance.new("Frame")
-flySliderKnob.Name = "FlySliderKnob"
 flySliderKnob.Size = UDim2.new(0, 14, 0, 14)
 flySliderKnob.Position = UDim2.new((DEFAULT_FLY_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), -7, 0.5, -7)
 flySliderKnob.BackgroundColor3 = Color3.fromRGB(200, 160, 255)
 flySliderKnob.BorderSizePixel = 0
 flySliderKnob.ZIndex = 2
 flySliderKnob.Parent = flySliderBg
-
 Instance.new("UICorner", flySliderKnob).CornerRadius = UDim.new(1, 0)
+
+-- ========== SEPARATOR ==========
+local sepLabel = Instance.new("TextLabel")
+sepLabel.Size = UDim2.new(1, 0, 0, 18)
+sepLabel.Position = UDim2.new(0, 0, 0, 136)
+sepLabel.BackgroundTransparency = 1
+sepLabel.Text = "----Pl Fl/SP----"
+sepLabel.TextColor3 = Color3.fromRGB(160, 100, 255)
+sepLabel.TextSize = 12
+sepLabel.Font = Enum.Font.GothamBold
+sepLabel.TextXAlignment = Enum.TextXAlignment.Center
+sepLabel.Parent = content
+
+-- ========== SP PL ==========
+local spPlRow = Instance.new("Frame")
+spPlRow.Size = UDim2.new(1, 0, 0, 26)
+spPlRow.Position = UDim2.new(0, 0, 0, 156)
+spPlRow.BackgroundTransparency = 1
+spPlRow.Parent = content
+
+local spPlBtn = Instance.new("TextButton")
+spPlBtn.Size = UDim2.new(0, 100, 0, 24)
+spPlBtn.Position = UDim2.new(0, 0, 0.5, -12)
+spPlBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+spPlBtn.Text = "Sp Pl"
+spPlBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
+spPlBtn.TextSize = 12
+spPlBtn.Font = Enum.Font.GothamBold
+spPlBtn.Parent = spPlRow
+Instance.new("UICorner", spPlBtn).CornerRadius = UDim.new(0, 5)
+local spPlStroke = Instance.new("UIStroke")
+spPlStroke.Color = Color3.fromRGB(140, 60, 255)
+spPlStroke.Thickness = 1
+spPlStroke.Parent = spPlBtn
+
+local plSpeedLabel = Instance.new("TextLabel")
+plSpeedLabel.Size = UDim2.new(1, 0, 0, 16)
+plSpeedLabel.Position = UDim2.new(0, 0, 0, 184)
+plSpeedLabel.BackgroundTransparency = 1
+plSpeedLabel.Text = "Pl Speed: " .. tostring(DEFAULT_PL_SPEED)
+plSpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+plSpeedLabel.TextSize = 12
+plSpeedLabel.Font = Enum.Font.Gotham
+plSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+plSpeedLabel.Parent = content
+
+local plSpeedBg = Instance.new("Frame")
+plSpeedBg.Size = UDim2.new(1, 0, 0, 8)
+plSpeedBg.Position = UDim2.new(0, 0, 0, 204)
+plSpeedBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+plSpeedBg.BorderSizePixel = 0
+plSpeedBg.Parent = content
+Instance.new("UICorner", plSpeedBg).CornerRadius = UDim.new(1, 0)
+
+local plSpeedFill = Instance.new("Frame")
+plSpeedFill.Size = UDim2.new((DEFAULT_PL_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1, 0)
+plSpeedFill.BackgroundColor3 = Color3.fromRGB(140, 60, 255)
+plSpeedFill.BorderSizePixel = 0
+plSpeedFill.Parent = plSpeedBg
+Instance.new("UICorner", plSpeedFill).CornerRadius = UDim.new(1, 0)
+
+local plSpeedKnob = Instance.new("Frame")
+plSpeedKnob.Size = UDim2.new(0, 14, 0, 14)
+plSpeedKnob.Position = UDim2.new((DEFAULT_PL_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), -7, 0.5, -7)
+plSpeedKnob.BackgroundColor3 = Color3.fromRGB(200, 160, 255)
+plSpeedKnob.BorderSizePixel = 0
+plSpeedKnob.ZIndex = 2
+plSpeedKnob.Parent = plSpeedBg
+Instance.new("UICorner", plSpeedKnob).CornerRadius = UDim.new(1, 0)
+
+-- ========== PL FL ==========
+local plFlyRow = Instance.new("Frame")
+plFlyRow.Size = UDim2.new(1, 0, 0, 26)
+plFlyRow.Position = UDim2.new(0, 0, 0, 224)
+plFlyRow.BackgroundTransparency = 1
+plFlyRow.Parent = content
+
+local plFlyLabel = Instance.new("TextLabel")
+plFlyLabel.Size = UDim2.new(0, 90, 1, 0)
+plFlyLabel.BackgroundTransparency = 1
+plFlyLabel.Text = "PL FL"
+plFlyLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+plFlyLabel.TextSize = 14
+plFlyLabel.Font = Enum.Font.Gotham
+plFlyLabel.TextXAlignment = Enum.TextXAlignment.Left
+plFlyLabel.Parent = plFlyRow
+
+local plFlyKeybindBtn = Instance.new("TextButton")
+plFlyKeybindBtn.Size = UDim2.new(0, 100, 0, 24)
+plFlyKeybindBtn.Position = UDim2.new(0, 100, 0.5, -12)
+plFlyKeybindBtn.BackgroundColor3 = Color3.fromRGB(45, 30, 70)
+plFlyKeybindBtn.Text = "G"
+plFlyKeybindBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
+plFlyKeybindBtn.TextSize = 12
+plFlyKeybindBtn.Font = Enum.Font.Gotham
+plFlyKeybindBtn.Parent = plFlyRow
+Instance.new("UICorner", plFlyKeybindBtn).CornerRadius = UDim.new(0, 5)
+local plFlyKeybindStroke = Instance.new("UIStroke")
+plFlyKeybindStroke.Color = Color3.fromRGB(140, 60, 255)
+plFlyKeybindStroke.Thickness = 1
+plFlyKeybindStroke.Parent = plFlyKeybindBtn
+
+local plFlySliderLabel = Instance.new("TextLabel")
+plFlySliderLabel.Size = UDim2.new(1, 0, 0, 16)
+plFlySliderLabel.Position = UDim2.new(0, 0, 0, 252)
+plFlySliderLabel.BackgroundTransparency = 1
+plFlySliderLabel.Text = "Pl Fly Speed: " .. tostring(DEFAULT_PL_FLY_SPEED)
+plFlySliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+plFlySliderLabel.TextSize = 12
+plFlySliderLabel.Font = Enum.Font.Gotham
+plFlySliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+plFlySliderLabel.Parent = content
+
+local plFlySliderBg = Instance.new("Frame")
+plFlySliderBg.Size = UDim2.new(1, 0, 0, 8)
+plFlySliderBg.Position = UDim2.new(0, 0, 0, 272)
+plFlySliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+plFlySliderBg.BorderSizePixel = 0
+plFlySliderBg.Parent = content
+Instance.new("UICorner", plFlySliderBg).CornerRadius = UDim.new(1, 0)
+
+local plFlySliderFill = Instance.new("Frame")
+plFlySliderFill.Size = UDim2.new((DEFAULT_PL_FLY_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1, 0)
+plFlySliderFill.BackgroundColor3 = Color3.fromRGB(140, 60, 255)
+plFlySliderFill.BorderSizePixel = 0
+plFlySliderFill.Parent = plFlySliderBg
+Instance.new("UICorner", plFlySliderFill).CornerRadius = UDim.new(1, 0)
+
+local plFlySliderKnob = Instance.new("Frame")
+plFlySliderKnob.Size = UDim2.new(0, 14, 0, 14)
+plFlySliderKnob.Position = UDim2.new((DEFAULT_PL_FLY_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), -7, 0.5, -7)
+plFlySliderKnob.BackgroundColor3 = Color3.fromRGB(200, 160, 255)
+plFlySliderKnob.BorderSizePixel = 0
+plFlySliderKnob.ZIndex = 2
+plFlySliderKnob.Parent = plFlySliderBg
+Instance.new("UICorner", plFlySliderKnob).CornerRadius = UDim.new(1, 0)
 
 -- Helpers
 local function getKeyName(keyCode)
@@ -347,6 +462,20 @@ local function updateFlySliderVisual(value)
 	flySliderLabel.Text = "Fly Speed: " .. tostring(math.floor(value + 0.5))
 end
 
+local function updatePlSpeedVisual(value)
+	local alpha = math.clamp((value - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1)
+	plSpeedFill.Size = UDim2.new(alpha, 0, 1, 0)
+	plSpeedKnob.Position = UDim2.new(alpha, -7, 0.5, -7)
+	plSpeedLabel.Text = "Pl Speed: " .. tostring(math.floor(value + 0.5))
+end
+
+local function updatePlFlySliderVisual(value)
+	local alpha = math.clamp((value - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1)
+	plFlySliderFill.Size = UDim2.new(alpha, 0, 1, 0)
+	plFlySliderKnob.Position = UDim2.new(alpha, -7, 0.5, -7)
+	plFlySliderLabel.Text = "Pl Fly Speed: " .. tostring(math.floor(value + 0.5))
+end
+
 local function setCollapsed(collapsed)
 	isCollapsed = collapsed
 	if collapsed then
@@ -357,6 +486,18 @@ local function setCollapsed(collapsed)
 		content.Visible = true
 		mainFrame.Size = PANEL_SIZE
 		collapseBtn.Text = "−"
+	end
+end
+
+local function updateSpPlBtn()
+	if spPlEnabled then
+		spPlBtn.Text = "Sp Pl ON"
+		spPlBtn.BackgroundColor3 = Color3.fromRGB(140, 60, 255)
+		spPlBtn.TextColor3 = Color3.fromRGB(15, 15, 15)
+	else
+		spPlBtn.Text = "Sp Pl"
+		spPlBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		spPlBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
 	end
 end
 
@@ -391,19 +532,31 @@ collapseBtn.MouseButton1Click:Connect(function()
 	setCollapsed(not isCollapsed)
 end)
 
+spPlBtn.MouseButton1Click:Connect(function()
+	spPlEnabled = not spPlEnabled
+	updateSpPlBtn()
+end)
+
 -- Keybinds
 keybindBtn.MouseButton1Click:Connect(function()
-	if isBindingKey or isBindingFlyKey then return end
+	if isBindingKey or isBindingFlyKey or isBindingPlFlyKey then return end
 	isBindingKey = true
 	keybindBtn.Text = "..."
 	keybindBtn.TextColor3 = Color3.fromRGB(255, 200, 100)
 end)
 
 flyKeybindBtn.MouseButton1Click:Connect(function()
-	if isBindingKey or isBindingFlyKey then return end
+	if isBindingKey or isBindingFlyKey or isBindingPlFlyKey then return end
 	isBindingFlyKey = true
 	flyKeybindBtn.Text = "..."
 	flyKeybindBtn.TextColor3 = Color3.fromRGB(255, 200, 100)
+end)
+
+plFlyKeybindBtn.MouseButton1Click:Connect(function()
+	if isBindingKey or isBindingFlyKey or isBindingPlFlyKey then return end
+	isBindingPlFlyKey = true
+	plFlyKeybindBtn.Text = "..."
+	plFlyKeybindBtn.TextColor3 = Color3.fromRGB(255, 200, 100)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -414,7 +567,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		isBindingKey = false
 		return
 	end
-
 	if isBindingFlyKey and input.UserInputType == Enum.UserInputType.Keyboard then
 		flyBoundKey = input.KeyCode
 		flyKeybindBtn.Text = getKeyName(flyBoundKey)
@@ -422,41 +574,40 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		isBindingFlyKey = false
 		return
 	end
+	if isBindingPlFlyKey and input.UserInputType == Enum.UserInputType.Keyboard then
+		plFlyBoundKey = input.KeyCode
+		plFlyKeybindBtn.Text = getKeyName(plFlyBoundKey)
+		plFlyKeybindBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
+		isBindingPlFlyKey = false
+		return
+	end
 
 	if not gameProcessed then
-		if input.KeyCode == boundKey then
-			isHoldingKey = true
-		end
-		if input.KeyCode == flyBoundKey then
-			isHoldingFlyKey = true
-		end
+		if input.KeyCode == boundKey then isHoldingKey = true end
+		if input.KeyCode == flyBoundKey then isHoldingFlyKey = true end
+		if input.KeyCode == plFlyBoundKey then isHoldingPlFlyKey = true end
 		if input.KeyCode == Enum.KeyCode.W then flyForward = true end
 		if input.KeyCode == Enum.KeyCode.S then flyBack = true end
 		if input.KeyCode == Enum.KeyCode.A then flyLeft = true end
 		if input.KeyCode == Enum.KeyCode.D then flyRight = true end
-		if input.KeyCode == Enum.KeyCode.Space then flyUp = true end
-		if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.C then flyDown = true end
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == boundKey then
-		isHoldingKey = false
-	end
-	if input.KeyCode == flyBoundKey then
-		isHoldingFlyKey = false
-	end
+	if input.KeyCode == boundKey then isHoldingKey = false end
+	if input.KeyCode == flyBoundKey then isHoldingFlyKey = false end
+	if input.KeyCode == plFlyBoundKey then isHoldingPlFlyKey = false end
 	if input.KeyCode == Enum.KeyCode.W then flyForward = false end
 	if input.KeyCode == Enum.KeyCode.S then flyBack = false end
 	if input.KeyCode == Enum.KeyCode.A then flyLeft = false end
 	if input.KeyCode == Enum.KeyCode.D then flyRight = false end
-	if input.KeyCode == Enum.KeyCode.Space then flyUp = false end
-	if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.C then flyDown = false end
 end)
 
 -- Sliders
 local sliding = false
 local flySliding = false
+local plSpeedSliding = false
+local plFlySliding = false
 
 local function updateFromMouse(inputPos)
 	local absPos = sliderBg.AbsolutePosition
@@ -474,13 +625,28 @@ local function updateFlyFromMouse(inputPos)
 	updateFlySliderVisual(currentFlySpeed)
 end
 
+local function updatePlSpeedFromMouse(inputPos)
+	local absPos = plSpeedBg.AbsolutePosition
+	local absSize = plSpeedBg.AbsoluteSize
+	local relative = math.clamp((inputPos.X - absPos.X) / absSize.X, 0, 1)
+	currentPlSpeed = MIN_SPEED + relative * (MAX_SPEED - MIN_SPEED)
+	updatePlSpeedVisual(currentPlSpeed)
+end
+
+local function updatePlFlyFromMouse(inputPos)
+	local absPos = plFlySliderBg.AbsolutePosition
+	local absSize = plFlySliderBg.AbsoluteSize
+	local relative = math.clamp((inputPos.X - absPos.X) / absSize.X, 0, 1)
+	currentPlFlySpeed = MIN_SPEED + relative * (MAX_SPEED - MIN_SPEED)
+	updatePlFlySliderVisual(currentPlFlySpeed)
+end
+
 sliderBg.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		sliding = true
 		updateFromMouse(input.Position)
 	end
 end)
-
 sliderKnob.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		sliding = true
@@ -493,10 +659,33 @@ flySliderBg.InputBegan:Connect(function(input)
 		updateFlyFromMouse(input.Position)
 	end
 end)
-
 flySliderKnob.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		flySliding = true
+	end
+end)
+
+plSpeedBg.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		plSpeedSliding = true
+		updatePlSpeedFromMouse(input.Position)
+	end
+end)
+plSpeedKnob.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		plSpeedSliding = true
+	end
+end)
+
+plFlySliderBg.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		plFlySliding = true
+		updatePlFlyFromMouse(input.Position)
+	end
+end)
+plFlySliderKnob.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		plFlySliding = true
 	end
 end)
 
@@ -504,6 +693,8 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		sliding = false
 		flySliding = false
+		plSpeedSliding = false
+		plFlySliding = false
 	end
 end)
 
@@ -513,6 +704,12 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 	if flySliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		updateFlyFromMouse(input.Position)
+	end
+	if plSpeedSliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		updatePlSpeedFromMouse(input.Position)
+	end
+	if plFlySliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		updatePlFlyFromMouse(input.Position)
 	end
 end)
 
@@ -545,19 +742,26 @@ local function getPrimary(vehicle, seat)
 	return seat
 end
 
--- Speed boost
+local function getRoot()
+	local char = player.Character
+	return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function getHumanoid()
+	local char = player.Character
+	return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+-- Speed boost (car)
 local originalMaxSpeed = {}
 
 local function applyBoost()
 	local seat = getVehicleSeat()
 	if not seat then return end
-
 	if not originalMaxSpeed[seat] then
 		originalMaxSpeed[seat] = seat.MaxSpeed
 	end
-
 	seat.MaxSpeed = currentSpeed
-
 	local vehicle = getVehicleModel(seat)
 	local primary = getPrimary(vehicle, seat)
 	if primary and primary:IsA("BasePart") then
@@ -580,7 +784,7 @@ local function restoreSpeed()
 	originalMaxSpeed = {}
 end
 
--- Fly + Noclip (from Fly Controller style)
+-- Car fly + noclip
 local originalCanCollide = {}
 local isFlying = false
 
@@ -614,36 +818,26 @@ local function applyFly(dt)
 		end
 		return
 	end
-
 	local vehicle = getVehicleModel(seat)
 	if not vehicle then return end
-
 	local primary = getPrimary(vehicle, seat)
 	if not primary or not primary:IsA("BasePart") then return end
-
 	if not isFlying then
 		enableNoclip(vehicle)
 		isFlying = true
 	end
-
 	local camera = workspace.CurrentCamera
 	local forward = camera.CFrame.LookVector
 	local right = camera.CFrame.RightVector
-
 	local move = Vector3.zero
 	if flyForward then move = move + forward end
 	if flyBack then move = move - forward end
 	if flyRight then move = move + right end
 	if flyLeft then move = move - right end
-	if flyUp then move = move + Vector3.new(0, 1, 0) end
-	if flyDown then move = move - Vector3.new(0, 1, 0) end
-
 	if move.Magnitude > 0 then
 		move = move.Unit * currentFlySpeed * dt
 		primary.CFrame = primary.CFrame + move
 	end
-
-	-- hover: cancel gravity / velocity while in fly mode
 	primary.AssemblyLinearVelocity = Vector3.zero
 	primary.AssemblyAngularVelocity = Vector3.zero
 end
@@ -652,7 +846,6 @@ local function stopFly()
 	if isFlying then
 		disableNoclip()
 		isFlying = false
-
 		local seat = getVehicleSeat()
 		if seat then
 			local vehicle = getVehicleModel(seat)
@@ -661,6 +854,95 @@ local function stopFly()
 				primary.AssemblyLinearVelocity = Vector3.zero
 				primary.AssemblyAngularVelocity = Vector3.zero
 			end
+		end
+	end
+end
+
+-- Player speed
+local originalWalkSpeed = nil
+
+local function applyPlSpeed()
+	local humanoid = getHumanoid()
+	if not humanoid then return end
+	if originalWalkSpeed == nil then
+		originalWalkSpeed = humanoid.WalkSpeed
+	end
+	humanoid.WalkSpeed = currentPlSpeed
+end
+
+local function restorePlSpeed()
+	local humanoid = getHumanoid()
+	if humanoid and originalWalkSpeed ~= nil then
+		humanoid.WalkSpeed = originalWalkSpeed
+	end
+	originalWalkSpeed = nil
+end
+
+-- Player fly + noclip
+local plOriginalCanCollide = {}
+local isPlFlying = false
+
+local function enablePlNoclip()
+	local char = player.Character
+	if not char then return end
+	for _, part in ipairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			if plOriginalCanCollide[part] == nil then
+				plOriginalCanCollide[part] = part.CanCollide
+			end
+			part.CanCollide = false
+		end
+	end
+end
+
+local function disablePlNoclip()
+	for part, canCollide in pairs(plOriginalCanCollide) do
+		if part and part.Parent then
+			part.CanCollide = canCollide
+		end
+	end
+	plOriginalCanCollide = {}
+end
+
+local function applyPlFly(dt)
+	local root = getRoot()
+	if not root then
+		if isPlFlying then
+			disablePlNoclip()
+			isPlFlying = false
+		end
+		return
+	end
+
+	isPlFlying = true
+	-- re-apply every frame so engine does not restore collisions
+	enablePlNoclip()
+
+	local camera = workspace.CurrentCamera
+	local forward = camera.CFrame.LookVector
+	local right = camera.CFrame.RightVector
+	local move = Vector3.zero
+	if flyForward then move = move + forward end
+	if flyBack then move = move - forward end
+	if flyRight then move = move + right end
+	if flyLeft then move = move - right end
+
+	if move.Magnitude > 0 then
+		move = move.Unit * currentPlFlySpeed * dt
+	end
+
+	root.CFrame = root.CFrame + move
+	root.AssemblyLinearVelocity = Vector3.zero
+end
+
+local function stopPlFly()
+	if isPlFlying then
+		disablePlNoclip()
+		isPlFlying = false
+		local root = getRoot()
+		if root then
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
 		end
 	end
 end
@@ -680,19 +962,35 @@ RunService.RenderStepped:Connect(function(dt)
 	else
 		stopFly()
 	end
+
+	if spPlEnabled then
+		applyPlSpeed()
+	else
+		if originalWalkSpeed ~= nil then
+			restorePlSpeed()
+		end
+	end
+
+	if isHoldingPlFlyKey then
+		applyPlFly(dt)
+	else
+		stopPlFly()
+	end
 end)
 
 player.CharacterAdded:Connect(function()
 	isHoldingKey = false
 	isHoldingFlyKey = false
+	isHoldingPlFlyKey = false
 	flyForward = false
 	flyBack = false
 	flyLeft = false
 	flyRight = false
-	flyUp = false
-	flyDown = false
 	restoreSpeed()
 	stopFly()
+	stopPlFly()
+	originalWalkSpeed = nil
 end)
 
+updateSpPlBtn()
 print("[SpeedCarPanel] Loaded - by nln")
