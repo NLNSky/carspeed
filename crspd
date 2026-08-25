@@ -1,0 +1,438 @@
+-- ===== by nln Scripts =====
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NLNSplash"
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local Frame = Instance.new("Frame")
+Frame.AnchorPoint = Vector2.new(0.5, 0.5)
+Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+Frame.Size = UDim2.new(0, 280, 0, 70)
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BackgroundTransparency = 1
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 12)
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Parent = Frame
+Stroke.Color = Color3.fromRGB(170, 0, 255)
+Stroke.Thickness = 2
+Stroke.Transparency = 1
+
+local Text = Instance.new("TextLabel")
+Text.Parent = Frame
+Text.Size = UDim2.fromScale(1, 1)
+Text.BackgroundTransparency = 1
+Text.Text = "by nln"
+Text.Font = Enum.Font.GothamBold
+Text.TextScaled = true
+Text.TextColor3 = Color3.fromRGB(170, 0, 255)
+Text.TextTransparency = 1
+
+TweenService:Create(Frame, TweenInfo.new(0.35), {BackgroundTransparency = 0.2}):Play()
+TweenService:Create(Stroke, TweenInfo.new(0.35), {Transparency = 0}):Play()
+TweenService:Create(Text, TweenInfo.new(0.35), {TextTransparency = 0}):Play()
+
+task.wait(2)
+
+TweenService:Create(Frame, TweenInfo.new(0.35), {BackgroundTransparency = 1}):Play()
+TweenService:Create(Stroke, TweenInfo.new(0.35), {Transparency = 1}):Play()
+TweenService:Create(Text, TweenInfo.new(0.35), {TextTransparency = 1}):Play()
+
+task.wait(0.4)
+ScreenGui:Destroy()
+
+task.wait(0.1)
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Config
+local DEFAULT_SPEED = 100
+local MIN_SPEED = 0
+local MAX_SPEED = 300
+local PANEL_SIZE = UDim2.new(0, 280, 0, 160)
+local COLLAPSED_SIZE = UDim2.new(0, 280, 0, 32)
+
+-- State
+local currentSpeed = DEFAULT_SPEED
+local boundKey = Enum.KeyCode.LeftShift
+local isHoldingKey = false
+local isCollapsed = false
+local isDragging = false
+local dragStart = nil
+local startPos = nil
+local isBindingKey = false
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpeedCarPanel"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = PANEL_SIZE
+mainFrame.Position = UDim2.new(0.5, -140, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(140, 60, 255)
+stroke.Thickness = 2
+stroke.Parent = mainFrame
+
+-- Top bar
+local topBar = Instance.new("Frame")
+topBar.Name = "TopBar"
+topBar.Size = UDim2.new(1, 0, 0, 32)
+topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainFrame
+
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 8)
+topCorner.Parent = topBar
+
+local topFix = Instance.new("Frame")
+topFix.Size = UDim2.new(1, 0, 0, 10)
+topFix.Position = UDim2.new(0, 0, 1, -10)
+topFix.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+topFix.BorderSizePixel = 0
+topFix.Parent = topBar
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, -40, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "by nln"
+titleLabel.TextColor3 = Color3.fromRGB(180, 120, 255)
+titleLabel.TextSize = 14
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = topBar
+
+-- Collapse button
+local collapseBtn = Instance.new("TextButton")
+collapseBtn.Name = "CollapseBtn"
+collapseBtn.Size = UDim2.new(0, 24, 0, 24)
+collapseBtn.Position = UDim2.new(1, -28, 0.5, -12)
+collapseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+collapseBtn.Text = "−"
+collapseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+collapseBtn.TextSize = 18
+collapseBtn.Font = Enum.Font.GothamBold
+collapseBtn.Parent = topBar
+
+local collapseCorner = Instance.new("UICorner")
+collapseCorner.CornerRadius = UDim.new(0, 4)
+collapseCorner.Parent = collapseBtn
+
+-- Content container
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.Size = UDim2.new(1, -20, 1, -42)
+content.Position = UDim2.new(0, 10, 0, 36)
+content.BackgroundTransparency = 1
+content.Parent = mainFrame
+
+-- Speed Car row
+local speedRow = Instance.new("Frame")
+speedRow.Name = "SpeedRow"
+speedRow.Size = UDim2.new(1, 0, 0, 28)
+speedRow.BackgroundTransparency = 1
+speedRow.Parent = content
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(0, 90, 1, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed Car"
+speedLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+speedLabel.TextSize = 14
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = speedRow
+
+local keybindBtn = Instance.new("TextButton")
+keybindBtn.Name = "KeybindBtn"
+keybindBtn.Size = UDim2.new(0, 100, 0, 26)
+keybindBtn.Position = UDim2.new(0, 100, 0.5, -13)
+keybindBtn.BackgroundColor3 = Color3.fromRGB(45, 30, 70)
+keybindBtn.Text = "LeftShift"
+keybindBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
+keybindBtn.TextSize = 12
+keybindBtn.Font = Enum.Font.Gotham
+keybindBtn.Parent = speedRow
+
+local keybindCorner = Instance.new("UICorner")
+keybindCorner.CornerRadius = UDim.new(0, 5)
+keybindCorner.Parent = keybindBtn
+
+local keybindStroke = Instance.new("UIStroke")
+keybindStroke.Color = Color3.fromRGB(140, 60, 255)
+keybindStroke.Thickness = 1
+keybindStroke.Parent = keybindBtn
+
+-- Slider section
+local sliderLabel = Instance.new("TextLabel")
+sliderLabel.Name = "SliderLabel"
+sliderLabel.Size = UDim2.new(1, 0, 0, 20)
+sliderLabel.Position = UDim2.new(0, 0, 0, 40)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.Text = "Speed: " .. tostring(DEFAULT_SPEED)
+sliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+sliderLabel.TextSize = 13
+sliderLabel.Font = Enum.Font.Gotham
+sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+sliderLabel.Parent = content
+
+local sliderBg = Instance.new("Frame")
+sliderBg.Name = "SliderBg"
+sliderBg.Size = UDim2.new(1, 0, 0, 8)
+sliderBg.Position = UDim2.new(0, 0, 0, 68)
+sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+sliderBg.BorderSizePixel = 0
+sliderBg.Parent = content
+
+local sliderBgCorner = Instance.new("UICorner")
+sliderBgCorner.CornerRadius = UDim.new(1, 0)
+sliderBgCorner.Parent = sliderBg
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Name = "SliderFill"
+sliderFill.Size = UDim2.new((DEFAULT_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(140, 60, 255)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBg
+
+local sliderFillCorner = Instance.new("UICorner")
+sliderFillCorner.CornerRadius = UDim.new(1, 0)
+sliderFillCorner.Parent = sliderFill
+
+local sliderKnob = Instance.new("Frame")
+sliderKnob.Name = "SliderKnob"
+sliderKnob.Size = UDim2.new(0, 16, 0, 16)
+sliderKnob.Position = UDim2.new((DEFAULT_SPEED - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), -8, 0.5, -8)
+sliderKnob.BackgroundColor3 = Color3.fromRGB(200, 160, 255)
+sliderKnob.BorderSizePixel = 0
+sliderKnob.ZIndex = 2
+sliderKnob.Parent = sliderBg
+
+local knobCorner = Instance.new("UICorner")
+knobCorner.CornerRadius = UDim.new(1, 0)
+knobCorner.Parent = sliderKnob
+
+-- Helpers
+local function getKeyName(keyCode)
+	local name = tostring(keyCode):gsub("Enum.KeyCode.", "")
+	return name
+end
+
+local function updateSliderVisual(value)
+	local alpha = math.clamp((value - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0, 1)
+	sliderFill.Size = UDim2.new(alpha, 0, 1, 0)
+	sliderKnob.Position = UDim2.new(alpha, -8, 0.5, -8)
+	sliderLabel.Text = "Speed: " .. tostring(math.floor(value + 0.5))
+end
+
+local function setCollapsed(collapsed)
+	isCollapsed = collapsed
+	if collapsed then
+		content.Visible = false
+		mainFrame.Size = COLLAPSED_SIZE
+		collapseBtn.Text = "+"
+	else
+		content.Visible = true
+		mainFrame.Size = PANEL_SIZE
+		collapseBtn.Text = "−"
+	end
+end
+
+-- Dragging
+topBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		isDragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+	end
+end)
+
+topBar.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		isDragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- Collapse
+collapseBtn.MouseButton1Click:Connect(function()
+	setCollapsed(not isCollapsed)
+end)
+
+-- Keybind button
+keybindBtn.MouseButton1Click:Connect(function()
+	if isBindingKey then return end
+	isBindingKey = true
+	keybindBtn.Text = "..."
+	keybindBtn.TextColor3 = Color3.fromRGB(255, 200, 100)
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if isBindingKey and input.UserInputType == Enum.UserInputType.Keyboard then
+		boundKey = input.KeyCode
+		keybindBtn.Text = getKeyName(boundKey)
+		keybindBtn.TextColor3 = Color3.fromRGB(200, 160, 255)
+		isBindingKey = false
+		return
+	end
+
+	if not gameProcessed and input.KeyCode == boundKey then
+		isHoldingKey = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == boundKey then
+		isHoldingKey = false
+	end
+end)
+
+-- Slider interaction
+local sliding = false
+
+local function updateFromMouse(inputPos)
+	local absPos = sliderBg.AbsolutePosition
+	local absSize = sliderBg.AbsoluteSize
+	local relative = math.clamp((inputPos.X - absPos.X) / absSize.X, 0, 1)
+	currentSpeed = MIN_SPEED + relative * (MAX_SPEED - MIN_SPEED)
+	updateSliderVisual(currentSpeed)
+end
+
+sliderBg.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliding = true
+		updateFromMouse(input.Position)
+	end
+end)
+
+sliderKnob.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliding = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliding = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		updateFromMouse(input.Position)
+	end
+end)
+
+-- Speed boost logic
+local function getVehicleSeat()
+	local character = player.Character
+	if not character then return nil end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return nil end
+	local seat = humanoid.SeatPart
+	if seat and seat:IsA("VehicleSeat") then
+		return seat
+	end
+	return nil
+end
+
+local originalMaxSpeed = {}
+local boostConnection = nil
+
+local function applyBoost()
+	local seat = getVehicleSeat()
+	if not seat then return end
+
+	if not originalMaxSpeed[seat] then
+		originalMaxSpeed[seat] = seat.MaxSpeed
+	end
+
+	-- Apply boosted max speed while holding
+	seat.MaxSpeed = currentSpeed
+
+	-- Extra velocity boost for more noticeable effect
+	local vehicle = seat.Parent
+	if vehicle and vehicle:IsA("Model") then
+		local primary = vehicle.PrimaryPart or seat
+		if primary and primary:IsA("BasePart") then
+			local look = primary.CFrame.LookVector
+			local currentVel = primary.AssemblyLinearVelocity
+			local forwardSpeed = currentVel:Dot(look)
+			if forwardSpeed > 5 then -- only boost when already moving forward
+				local boostForce = look * (currentSpeed * 0.35)
+				primary.AssemblyLinearVelocity = currentVel + (boostForce - look * math.min(forwardSpeed * 0.15, currentSpeed * 0.1))
+			end
+		end
+	end
+end
+
+local function restoreSpeed()
+	for seat, maxSpd in pairs(originalMaxSpeed) do
+		if seat and seat.Parent then
+			seat.MaxSpeed = maxSpd
+		end
+	end
+	originalMaxSpeed = {}
+end
+
+RunService.Heartbeat:Connect(function()
+	if isHoldingKey then
+		applyBoost()
+	else
+		if next(originalMaxSpeed) then
+			restoreSpeed()
+		end
+	end
+end)
+
+-- Cleanup on character respawn
+player.CharacterAdded:Connect(function()
+	isHoldingKey = false
+	restoreSpeed()
+end)
+
+print("[SpeedCarPanel] Loaded - by nln")
